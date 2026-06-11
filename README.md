@@ -45,20 +45,24 @@ uv run python -m limx_robotics_mcp
 .\start.ps1
 ```
 
-## Tools
+## Tools (14 total)
 
-| Tool | Description |
-|------|-------------|
-| `start_sim` / `stop_sim` / `sim_jobs` | MuJoCo simulation lifecycle (launch, stop, monitor) |
-| `list_robot_variants` / `get_robot_description` | Robot model access (URDF, USD, XML) |
-| `list_policies` / `run_deployed_policy` | VLA/RL policy deployment |
-| `export_model_for_fleet` | Export robot as GLB for Godot/Unity |
-| `sim_status` | Health check |
-| `agentic_sim_workflow` | 🤖 Autonomous multi-step sim via LLM (ctx.sample / Ollama) |
-| `natural_language_control` | 🎯 "Make it crouch" → actuator values → `control.json` |
-| `analyze_sim_state` | 📊 LLM reads state.json, describes robot behavior |
-| `analyze_sim_logs` | 🔍 LLM tails logs, suggests fixes |
-| `discover_model` | 🌐 LLM generates URLs, downloads MJCF models |
+| # | Tool | Description |
+|---|------|-------------|
+| 1 | `sim_status` | Composite health check (env, submodules, GPU) |
+| 2 | `start_sim` | Launch MuJoCo sim (TRON 1 or Oli MuJoCo) |
+| 3 | `stop_sim` | Terminate a running sim |
+| 4 | `sim_jobs` | List/query active and completed sim jobs |
+| 5 | `list_robot_variants` | Discover available robot model variants |
+| 6 | `get_robot_description` | Get URDF/USD/XML model file content |
+| 7 | `list_policies` | List available RL/VLA policies |
+| 8 | `run_deployed_policy` | Deploy a trained RL policy to a sim |
+| 9 | `export_model_for_fleet` | Export robot as GLB for Godot/Unity |
+| 10 | `agentic_sim_workflow` | 🤖 Autonomous multi-step sim via LLM |
+| 11 | `natural_language_control` | 🎯 "Make it crouch" → actuator values |
+| 12 | `analyze_sim_state` | 📊 LLM describes robot behaviour from state |
+| 13 | `analyze_sim_logs` | 🔍 LLM diagnoses issues from logs |
+| 14 | `discover_model` | 🌐 LLM generates URLs, downloads MJCF models |
 
 ## Web Dashboard
 
