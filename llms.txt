@@ -1,0 +1,32 @@
+# limx-robotics-mcp
+
+FastMCP 3.2 wrapper for LimX Dynamics open-source robotics stack.
+
+## Tools
+
+- start_sim — Launch TRON 1 or Oli MuJoCo simulation (background process)
+- stop_sim — Terminate a running simulation
+- sim_jobs — List/status simulation jobs with log tail
+- list_robot_variants — Discover valid ROBOT_TYPE values
+- get_robot_description — Load URDF/USD/XML model files
+- sim_status — Health check (repos, submodules, SDK, Python deps)
+
+## Setup
+
+```powershell
+git submodule update --init --recursive  # in tron1-mujoco-sim and humanoid-mujoco-sim
+.\setup-sim-env.ps1                      # creates .venv-sim38 (Python 3.8 + mujoco + limxsdk)
+uv run python -m limx_robotics_mcp       # start MCP server
+```
+
+## External repos
+
+Cloned under D:\Dev\repos\external/:
+- tron1-mujoco-sim — TRON 1 biped MuJoCo sim
+- humanoid-mujoco-sim — Oli humanoid MuJoCo sim
+- humanoid-description — URDF/USD/XML robot models
+- limxsdk-lowlevel — C++11/Python low-level SDK
+
+## Docs
+
+- docs/SIM_SETUP.md — full MuJoCo setup guide, known limitations, troubleshooting

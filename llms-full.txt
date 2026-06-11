@@ -1,0 +1,98 @@
+# limx-robotics-mcp
+
+FastMCP 3.2 wrapper for LimX Dynamics open-source robotics stack.
+
+## Architecture
+
+```
+MCP client (Claude Desktop / Cursor)
+    │
+    └── limx-robotics-mcp (FastMCP stdio)
+            ├── start_sim → Popen(sim_python simulator.py, ROBOT_TYPE env)
+            ├── stop_sim  → terminate/kill
+            ├── sim_jobs  → process table + log tail
+            ├── list_robot_variants → filesystem discovery
+            ├── get_robot_description → file reads
+            └── sim_status → composite health check
+```
+
+## MuJoCo Simulator Contract
+
+### Entry Point
+
+Both simulators use `simulator.py` which reads the `ROBOT_TYPE` environment
+variable to determine which model to load.
+
+### Mode
+
+**GUI only.** The upstream `simulator.py` opens an interactive MuJoCo viewer
+window. No headless/offscreen mode exists. The MCP server manages the sim as
+a background Popen process with log capture and lifecycle tools.
+
+### Logging
+
+stdout → `logs/sim_{platform}_{robot_type}_{job_id}.log`. Captured via Popen
+file handle. View via `sim_jobs(job_id=..., log_tail_lines=N)`.
+
+## Robot Variant Discovery
+
+### TRON 1
+
+Discovered in `external/tron1-mujoco-sim/robot-description/pointfoot/*/xml/robot.xml`.
+Only pointfoot variants are loadable — `wheellegged/` exists but upstream
+simulator.py does not read it.
+
+### Oli
+
+Discovered in `external/humanoid-mujoco-sim/humanoid-description/HU_*_description/xml/*.xml`.
+Valid variants: HU_D03_03, HU_D04_01.
+
+## Python 3.8 Requirement
+
+The limxsdk Windows wheel ships `_robot.pyd` linked against `python38.dll`.
+Simulations MUST run under CPython 3.8. The MCP server (FastMCP requires 3.11+)
+launches sims as child processes using `.venv-sim38/Scripts/python.exe`.
+
+Setup creates `.venv-sim38` with:
+- Python 3.8.10 embeddable (python.org)
+- mujoco 3.1.6
+- numpy 1.24.4
+- limxsdk 3.4.2 (--no-deps)
+
+## Troubleshooting
+
+| Symptom | Cause |
+|---------|-------|
+| ImportError: mujoco | setup-sim-env.ps1 not run |
+| python38.dll not found | sim running under MCP Python instead of .venv-sim38 |
+| robot.xml not found | git submodules not initialized |
+| Viewer opens and closes | Wrong ROBOT_TYPE or missing model |
+
+## Tools Reference
+
+### start_sim(platform, robot_type)
+
+Returns job_id, pid, status. Waits 2s post-launch to detect immediate
+crashes. MuJoCo window opens on desktop.
+
+### stop_sim(job_id)
+
+Sends SIGTERM, waits 5s, then SIGKILL. Returns final log tail.
+
+### sim_jobs(job_id, log_tail_lines)
+
+Without job_id: list all jobs. With job_id: detail view + log tail.
+
+### list_robot_variants(platform)
+
+Scans the description repos for valid ROBOT_TYPE values.
+
+### get_robot_description(platform, variant, format, include_content)
+
+Returns file paths and sizes. With include_content=true, reads the best
+match file inline (capped at 200 KB).
+
+### sim_status()
+
+Composite health: repo existence, submodule population, SDK wheel
+availability, Python 3.8 dep probe, running job count.

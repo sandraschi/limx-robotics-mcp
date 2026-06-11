@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.venv-sim38/
+dist/
+build/
+
+# Node
+node_modules/
+web_sota/dist/
+
+# Logs
+logs/
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# Backup
+*.bak
+
+# OS
+Thumbs.db
+.DS_Store
