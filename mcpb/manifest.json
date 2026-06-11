@@ -1,0 +1,20 @@
+{
+  "manifest_version": "0.3",
+  "name": "limx-robotics-mcp",
+  "version": "0.2.0",
+  "description": "FastMCP wrapper for LimX Dynamics open-source robotics stack",
+  "author": { "name": "Sandra Schipal", "url": "https://github.com/sandraschi" },
+  "repository": { "type": "git", "url": "https://github.com/sandraschi/limx-robotics-mcp.git" },
+  "homepage": "https://github.com/sandraschi/limx-robotics-mcp",
+  "license": "Apache 2.0",
+  "keywords": ["mcp", "model-context-protocol", "fastmcp", "limx", "robotics", "biped"],
+  "server": {
+    "type": "python",
+    "entry_point": "src/limx_robotics_mcp/server.py",
+    "mcp_config": {
+      "command": "python",
+      "args": ["-m", "limx_robotics_mcp.server"],
+      "env": { "PYTHONPATH": "${__dirname}/src", "PYTHONUNBUFFERED": "1" }
+    }
+  }
+}
