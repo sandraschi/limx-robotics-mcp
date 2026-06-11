@@ -80,3 +80,20 @@ models — wheellegged (`WL_*`) descriptions exist on disk but are unreachable t
 ## Timeline estimate (AI-assisted)
 
 Items 1–2: same session. Items 3–4: one day. Item 5: 2–3 days if WSL2 is needed.
+
+---
+
+## Update 2026-06-12 (post OpenCode pass)
+
+Pushed to GitHub (main). Tool surface grew 6 -> 14: OpenCode added the fleet
+AI-tool template (agentic_sim_workflow, natural_language_control,
+analyze_sim_state, analyze_sim_logs, discover_model) plus
+`export_model_for_fleet`, `list_policies`, `run_deployed_policy`. The
+job-manager core from the 0.2.0 rebuild is intact. Now registered in the
+robotics-fleet architecture (ports 11044/11045) and FLEET_INDEX.
+
+**Unverified:** `run_deployed_policy` � RL deploy repos have their own deps
+and the Py3.8 sim constraint question is unresolved for policy inference;
+needs one real session. Port 11045 frontend is registry-aspirational (no
+web_sota in this repo yet). hatchling packaging added (launch via
+`uv run python -m` now works).
