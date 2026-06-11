@@ -586,7 +586,7 @@ wheels = [
 [[package]]
 name = "limx-robotics-mcp"
 version = "0.2.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
     { name = "fastmcp" },
