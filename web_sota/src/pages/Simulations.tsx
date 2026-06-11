@@ -21,6 +21,10 @@ export default function Simulations() {
   const [logTail, setLogTail] = useState("");
   const [msg, setMsg] = useState("");
 
+  const [aiModal, setAiModal] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState("");
+
   const fetchJobs = () => {
     fetch("/api/sim/jobs")
       .then((r) => r.json())
@@ -82,6 +86,25 @@ export default function Simulations() {
       .then((r) => r.json())
       .then((d) => setLogTail(d.log_tail ?? d.log ?? "(no log)"))
       .catch((e) => setLogTail(String(e)));
+  };
+
+  const analyzeJob = async (jobId: string) => {
+    setAiModal(jobId);
+    setAiLoading(true);
+    setAiResult("");
+    try {
+      const r = await fetch("/api/ai/analyze-state", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ job_id: jobId }),
+      });
+      const d = await r.json();
+      setAiResult(d.analysis ?? d.message ?? JSON.stringify(d));
+    } catch (e: any) {
+      setAiResult(`Error: ${e}`);
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   return (
@@ -166,7 +189,16 @@ export default function Simulations() {
                     <td className="py-2">{j.robot_type}</td>
                     <td className="py-2 font-mono">{j.pid}</td>
                     <td className="py-2">{j.uptime_s.toFixed(0)}s</td>
-                    <td className="py-2">
+                    <td className="py-2 flex gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          analyzeJob(j.job_id);
+                        }}
+                        className="px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded text-xs font-medium hover:bg-emerald-200 transition-colors"
+                      >
+                        AI Analyze
+                      </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -193,6 +225,33 @@ export default function Simulations() {
           </table>
         )}
       </div>
+
+      {aiModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
+              <h2 className="text-sm font-semibold text-slate-700">
+                AI Analysis — {aiModal}
+              </h2>
+              <button
+                onClick={() => { setAiModal(null); setAiResult(""); }}
+                className="text-slate-400 hover:text-slate-600 text-lg leading-none"
+              >
+                &times;
+              </button>
+            </div>
+            <div className="p-5 overflow-auto flex-1">
+              {aiLoading ? (
+                <p className="text-sm text-slate-400">Analyzing…</p>
+              ) : (
+                <pre className="text-sm whitespace-pre-wrap leading-relaxed font-sans">
+                  {aiResult}
+                </pre>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

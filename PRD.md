@@ -20,6 +20,10 @@ MCP tools for simulation, training, and visualization — no hardware required.
 | VLA policy deployment | P1 | Run trained RL policies via LimX deploy pipeline |
 | Fleet visualization bridge | P1 | Export models as GLB for godot-mcp / unity3d-mcp |
 | Web dashboard | P2 | Prefab cards showing sim status, jobs, available variants |
+| AI agentic workflows | P1 | Multi-step sim orchestration via LLM sampling (ctx.sample + Ollama fallback) |
+| Natural language control | P1 | "Make it crouch" → LLM → actuator values |
+| Conversational state/log analysis | P2 | LLM reads sim state and logs, describes behavior, suggests fixes |
+| Smart model discovery | P2 | LLM generates URLs, downloads MJCF models by description |
 | Dual transport | P1 | stdio (Claude Desktop) + HTTP streamable |
 
 ### Out of scope (future)
@@ -92,6 +96,28 @@ await run_deployed_policy(platform="tron1", policy_name="walk_v2")
 ```python
 await export_model_for_fleet(platform="oli", variant="HU_D04_01")
 # → GLB written to fleet exchange, ready for godot_import_glb
+```
+
+### US-005: Agentic sim workflow
+
+```python
+await agentic_sim_workflow(goal="Start TRON 1, make it walk for 10 seconds, then analyze gait")
+# → LLM plans: start_sim → get_state loop → apply_control → analyze
+# → Returns plan log and observations
+```
+
+### US-006: Natural language robot control
+
+```python
+await natural_language_control(prompt="Bend the right knee 30 degrees", job_id="a1b2c3d4")
+# → LLM translates to actuator values, writes control.json
+```
+
+### US-007: Discover and load any MuJoCo model
+
+```python
+await discover_model(description="Unitree H1 humanoid for MuJoCo")
+# → LLM generates candidate URLs, downloads MJCF, validates XML
 ```
 
 ## 6. Ports

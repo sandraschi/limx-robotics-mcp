@@ -21,6 +21,10 @@ export default function Dashboard() {
   const [status, setStatus] = useState<Status | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
+  const [aiGoal, setAiGoal] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiResult, setAiResult] = useState("");
+
   const fetchStatus = () => {
     fetch("/api/sim/status")
       .then((r) => r.json())
@@ -33,6 +37,25 @@ export default function Dashboard() {
     const id = setInterval(fetchStatus, 10000);
     return () => clearInterval(id);
   }, []);
+
+  const runAiWorkflow = async () => {
+    if (!aiGoal.trim()) return;
+    setAiBusy(true);
+    setAiResult("");
+    try {
+      const r = await fetch("/api/ai/workflow", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ goal: aiGoal }),
+      });
+      const d = await r.json();
+      setAiResult(d.plan_and_result ?? d.message ?? JSON.stringify(d));
+    } catch (e: any) {
+      setAiResult(`Error: ${e}`);
+    } finally {
+      setAiBusy(false);
+    }
+  };
 
   if (err) return <PageTitle>Error: {err}</PageTitle>;
   if (!status) return <PageTitle>Loading…</PageTitle>;
@@ -173,6 +196,32 @@ export default function Dashboard() {
           >
             Export Model
           </button>
+        </div>
+      </Card>
+
+      <Card title="Quick AI Workflow">
+        <div className="space-y-3">
+          <div className="flex gap-3">
+            <input
+              type="text"
+              value={aiGoal}
+              onChange={(e) => setAiGoal(e.target.value)}
+              placeholder="Describe your simulation goal..."
+              className="flex-1 border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              onClick={runAiWorkflow}
+              disabled={aiBusy || !aiGoal.trim()}
+              className="px-5 py-2 bg-emerald-600 text-white rounded text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+            >
+              {aiBusy ? "Running…" : "Execute"}
+            </button>
+          </div>
+          {aiResult && (
+            <pre className="bg-slate-50 border border-slate-200 rounded p-4 text-xs font-mono whitespace-pre-wrap overflow-auto max-h-60">
+              {aiResult}
+            </pre>
+          )}
         </div>
       </Card>
     </div>

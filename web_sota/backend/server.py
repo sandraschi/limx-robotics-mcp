@@ -15,6 +15,7 @@ from web_sota.backend.routes.policies import router as policies_router
 from web_sota.backend.routes.logging import router as logging_router
 from web_sota.backend.routes.llm import router as llm_router
 from web_sota.backend.routes.settings import router as settings_router
+from web_sota.backend.routes.ai import router as ai_router
 
 app = FastAPI(title="limx-robotics-mcp")
 
@@ -31,6 +32,7 @@ app.include_router(policies_router)
 app.include_router(logging_router)
 app.include_router(llm_router)
 app.include_router(settings_router)
+app.include_router(ai_router)
 
 
 @app.get("/health")

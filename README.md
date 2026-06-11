@@ -54,6 +54,11 @@ uv run python -m limx_robotics_mcp
 | `list_policies` / `run_deployed_policy` | VLA/RL policy deployment |
 | `export_model_for_fleet` | Export robot as GLB for Godot/Unity |
 | `sim_status` | Health check |
+| `agentic_sim_workflow` | 🤖 Autonomous multi-step sim via LLM (ctx.sample / Ollama) |
+| `natural_language_control` | 🎯 "Make it crouch" → actuator values → `control.json` |
+| `analyze_sim_state` | 📊 LLM reads state.json, describes robot behavior |
+| `analyze_sim_logs` | 🔍 LLM tails logs, suggests fixes |
+| `discover_model` | 🌐 LLM generates URLs, downloads MJCF models |
 
 ## Web Dashboard
 

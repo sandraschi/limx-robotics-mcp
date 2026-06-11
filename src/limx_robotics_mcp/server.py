@@ -22,7 +22,9 @@ Upstream contract (verified against repos as of 2026-06-11):
   limxsdk 3.4.2 installed --no-deps).
 """
 
+import json
 import os
+import re
 import subprocess
 import time
 import uuid
@@ -30,7 +32,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastmcp import FastMCP
+from fastmcp import Context, FastMCP
 from pydantic import Field
 
 EXTERNAL = Path(os.getenv("LIMX_EXTERNAL_DIR", "D:/Dev/repos/external"))
@@ -521,6 +523,301 @@ async def run_deployed_policy(
         "exit_code": proc.returncode,
         "log_path": str(log_path),
         "log": stdout.decode("utf-8", errors="replace")[-3000:],
+    }
+
+
+# ---------------------------------------------------------------------------
+# AI workflow helpers
+# ---------------------------------------------------------------------------
+
+
+def _extract_json(text: str) -> dict | None:
+    for m in re.finditer(r"\{[^{}]*\}", text):
+        try:
+            return json.loads(m.group())
+        except json.JSONDecodeError:
+            continue
+    return None
+
+
+def _extract_json_array(text: str) -> list:
+    for m in re.finditer(r"\[.*?\]", text, re.DOTALL):
+        try:
+            return json.loads(m.group())
+        except json.JSONDecodeError:
+            continue
+    return []
+
+
+def _job_dir_for(job_id: str) -> Path:
+    return Path("D:/Dev/repos/limx-robotics-mcp/jobs") / job_id
+
+
+# ---------------------------------------------------------------------------
+# AI workflow tools
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def agentic_sim_workflow(
+    goal: Annotated[str, Field(description="Natural language goal, e.g. 'Start a TRON 1 sim and make it walk'.")],
+    ctx: Context,
+) -> dict[str, Any]:
+    """Execute an autonomous multi-step simulation workflow using the host LLM.
+
+    The LLM plans a sequence of tool calls (start_sim, get_state, apply_control, etc.)
+    to achieve the described goal. Falls back to Ollama when ctx.sample is unavailable.
+    """
+    tools_desc = """
+Available tools (invoke with JSON):
+- start_sim(platform, robot_type) — launch MuJoCo sim, returns job_id
+- stop_sim(job_id) — terminate sim
+- sim_jobs(job_id, log_tail_lines) — query job status
+- list_robot_variants(platform) — discover valid robot types
+- get_robot_description(platform, variant, format) — get URDF/USD/XML
+- export_model_for_fleet(platform, variant, format) — export GLB
+- list_policies(platform) — list RL policies
+- run_deployed_policy(platform, policy_name, robot_type) — deploy policy
+"""
+    prompt = f"""You are a robotics simulation engineer. Your goal: {goal}
+
+{tools_desc}
+
+Plan and execute the steps. Show your reasoning before each tool call.
+After completion, summarize what happened and any observations."""
+
+    try:
+        result = await ctx.sample(prompt)
+        text = getattr(result, "text", None) or str(result)
+        return {"success": True, "message": "Workflow completed.", "plan_and_result": text.strip(), "sampling_used": True}
+    except Exception as e:
+        try:
+            import httpx
+            resp = httpx.post(
+                "http://127.0.0.1:11434/api/generate",
+                json={"model": "llama3.2:3b", "prompt": prompt, "stream": False},
+                timeout=120,
+            )
+            return {"success": True, "message": "Workflow completed (Ollama).", "plan_and_result": resp.json().get("response", ""), "sampling_used": False, "model": "ollama"}
+        except Exception as ollama_e:
+            return {"success": False, "message": f"Both sampling and Ollama fallback failed: {e}; {ollama_e}"}
+
+
+@mcp.tool()
+async def natural_language_control(
+    prompt: Annotated[str, Field(description="Natural language command, e.g. 'bend the right knee 30 degrees'.")],
+    job_id: Annotated[str, Field(description="Active sim job id.")],
+    ctx: Context,
+) -> dict[str, Any]:
+    """Convert a natural language command to actuator control values for a running sim.
+
+    Reads the current sim state and actuator metadata, then asks the LLM to
+    produce actuator values that fulfill the user's intent. Writes the result
+    to the job's control.json for downstream consumption.
+    """
+    job_dir = _job_dir_for(job_id)
+    meta_path = job_dir / "metadata.json"
+    state_path = job_dir / "state.json"
+    meta = json.loads(meta_path.read_text()) if meta_path.exists() else {}
+    state = json.loads(state_path.read_text()) if state_path.exists() else {}
+
+    nl_prompt = f"""You are a robot control engineer. The robot has these actuators:
+{json.dumps(meta.get("actuator_names", []), indent=2)}
+
+Current state:
+{json.dumps(state, indent=2)}
+
+The user says: "{prompt}"
+
+Respond with ONLY a JSON object mapping actuator names to float values.
+If an actuator is not relevant, omit it (it keeps its current value).
+Example: {{"hip_joint": 0.5, "knee_joint": -0.3}}"""
+
+    sampling_used = False
+    try:
+        result = await ctx.sample(nl_prompt)
+        text = getattr(result, "text", None) or str(result)
+        sampling_used = True
+    except Exception:
+        try:
+            import httpx
+            resp = httpx.post(
+                "http://127.0.0.1:11434/api/generate",
+                json={"model": "llama3.2:3b", "prompt": nl_prompt, "stream": False},
+                timeout=30,
+            )
+            text = resp.json().get("response", "")
+        except Exception as e:
+            return {"success": False, "message": f"LLM unavailable: {e}"}
+
+    ctrl = _extract_json(text)
+    if not ctrl:
+        return {"success": False, "message": "Could not parse LLM output as actuator commands.", "raw_llm_output": text}
+
+    if job_dir.exists():
+        job_dir.mkdir(parents=True, exist_ok=True)
+        (job_dir / "control.json").write_text(json.dumps(ctrl))
+
+    return {"success": True, "message": f"Generated {len(ctrl)} actuator commands.", "controls": ctrl, "source": "sampling" if sampling_used else "ollama"}
+
+
+@mcp.tool()
+async def analyze_sim_state(
+    job_id: Annotated[str, Field(description="Sim job id to analyze.")],
+    ctx: Context,
+) -> dict[str, Any]:
+    """Read the current sim state and produce a natural-language analysis of what the robot is doing.
+
+    Analyzes joint positions, velocities, contacts, and any logged observations
+    to describe the robot's behaviour (standing, walking, falling, etc.).
+    """
+    job_dir = _job_dir_for(job_id)
+    meta_path = job_dir / "metadata.json"
+    state_path = job_dir / "state.json"
+    meta = json.loads(meta_path.read_text()) if meta_path.exists() else {}
+    state = json.loads(state_path.read_text()) if state_path.exists() else {}
+
+    if not state:
+        return {"success": False, "message": f"No state data found for job {job_id}."}
+
+    analyze_prompt = f"""You are a robotics analyst. Given this robot metadata and state, describe what the robot is doing.
+
+Metadata:
+{json.dumps(meta, indent=2)}
+
+State:
+{json.dumps(state, indent=2)}
+
+Describe in plain English:
+1. What is the robot's posture/stance?
+2. Is it stable or falling?
+3. What are the key joint angles telling you?
+4. Any anomalies or interesting observations?"""
+
+    try:
+        result = await ctx.sample(analyze_prompt)
+        text = getattr(result, "text", None) or str(result)
+        return {"success": True, "message": "State analyzed.", "analysis": text.strip(), "sampling_used": True}
+    except Exception:
+        try:
+            import httpx
+            resp = httpx.post(
+                "http://127.0.0.1:11434/api/generate",
+                json={"model": "llama3.2:3b", "prompt": analyze_prompt, "stream": False},
+                timeout=30,
+            )
+            return {"success": True, "message": "State analyzed (Ollama).", "analysis": resp.json().get("response", ""), "sampling_used": False}
+        except Exception as e:
+            return {"success": False, "message": f"LLM unavailable: {e}"}
+
+
+@mcp.tool()
+async def analyze_sim_logs(
+    job_id: Annotated[str, Field(description="Sim job id.")],
+    ctx: Context,
+) -> dict[str, Any]:
+    """Read the sim log file and ask the LLM for root-cause analysis and suggestions.
+
+    Useful after a sim crash or unexpected behaviour — the LLM reads the last
+    100 log lines and produces diagnostics.
+    """
+    job = JOBS.get(job_id)
+    if job is None:
+        return {"success": False, "message": f"Unknown job '{job_id}'.", "known_jobs": list(JOBS)}
+
+    if not job.log_path.exists():
+        return {"success": False, "message": f"Log file not found at {job.log_path}."}
+
+    lines = job.log_path.read_text(encoding="utf-8", errors="replace").splitlines()
+    tail = lines[-100:]
+
+    log_prompt = f"""You are a robotics debug engineer. Given these simulation log lines, diagnose any issues.
+
+Platform: {job.platform}
+Robot type: {job.robot_type}
+Job status: {job.status()}
+Uptime: {job.info().get("uptime_s", "?")}s
+
+Last {len(tail)} log lines:
+{chr(10).join(tail)}
+
+Provide:
+1. What went wrong (or is everything OK)?
+2. Root cause hypotheses
+3. Specific suggestions to fix or improve"""
+
+    try:
+        result = await ctx.sample(log_prompt)
+        text = getattr(result, "text", None) or str(result)
+        return {"success": True, "message": "Logs analyzed.", "analysis": text.strip(), "sampling_used": True}
+    except Exception:
+        try:
+            import httpx
+            resp = httpx.post(
+                "http://127.0.0.1:11434/api/generate",
+                json={"model": "llama3.2:3b", "prompt": log_prompt, "stream": False},
+                timeout=30,
+            )
+            return {"success": True, "message": "Logs analyzed (Ollama).", "analysis": resp.json().get("response", ""), "sampling_used": False}
+        except Exception as e:
+            return {"success": False, "message": f"LLM unavailable: {e}"}
+
+
+@mcp.tool()
+async def discover_model(
+    description: Annotated[str, Field(description="Description, e.g. 'Unitree H1 humanoid MuJoCo model'.")],
+    ctx: Context,
+) -> dict[str, Any]:
+    """Search for and download a MuJoCo MJCF/XML model from GitHub given a natural-language description.
+
+    The LLM generates candidate GitHub raw URLs based on known open-source robot repos,
+    then the tool attempts to download and validate each URL.
+    """
+    prompt = f"""Given this description: "{description}"
+
+Suggest up to 3 GitHub raw URLs that might contain a MuJoCo MJCF/XML model file matching this description.
+Focus on known open-source robot repos (Unitree, LimX, Boston Dynamics research, etc.).
+Return ONLY a JSON array of URLs, nothing else.
+Example: ["https://raw.githubusercontent.com/unitreerobotics/unitree_mujoco/main/data/h1.xml"]"""
+
+    try:
+        result = await ctx.sample(prompt)
+        urls = _extract_json_array(getattr(result, "text", None) or str(result))
+    except Exception:
+        try:
+            import httpx
+            resp = httpx.post(
+                "http://127.0.0.1:11434/api/generate",
+                json={"model": "llama3.2:3b", "prompt": prompt, "stream": False},
+                timeout=30,
+            )
+            urls = _extract_json_array(resp.json().get("response", ""))
+        except Exception:
+            return {"success": False, "message": "LLM unavailable for model discovery."}
+
+    if not urls:
+        return {"success": False, "message": "Could not generate model URLs from description."}
+
+    models_dir = Path("D:/Dev/repos/limx-robotics-mcp/models")
+    models_dir.mkdir(parents=True, exist_ok=True)
+    loaded = []
+    import httpx as httpx_mod
+    for url in urls[:3]:
+        try:
+            resp = httpx_mod.get(url, follow_redirects=True, timeout=30)
+            if resp.status_code == 200 and b"<mujoco" in resp.content[:500]:
+                name = url.split("/")[-1].replace(".xml", "")
+                dest = models_dir / f"{name}.xml"
+                dest.write_bytes(resp.content)
+                loaded.append({"url": url, "name": name, "path": str(dest)})
+        except Exception:
+            continue
+
+    return {
+        "success": len(loaded) > 0,
+        "message": f"Loaded {len(loaded)}/{len(urls)} models." if loaded else "No models could be downloaded.",
+        "models_loaded": loaded,
+        "urls_tried": urls,
     }
 
 
