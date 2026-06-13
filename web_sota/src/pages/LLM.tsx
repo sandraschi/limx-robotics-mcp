@@ -26,12 +26,16 @@ export default function LLM() {
   const [jobs, setJobs] = useState<string[]>([]);
 
   useEffect(() => {
+    const savedProvider = localStorage.getItem("llm_provider") || "ollama";
+    const savedModel = localStorage.getItem("llm_model") || "";
+
     fetch("/api/llm/providers")
       .then((r) => r.json())
       .then((d) => {
         const list = Array.isArray(d.providers) ? d.providers : [];
         setProviders(list);
-        if (list.length > 0) setProvider(list[0]);
+        const p = list.includes(savedProvider) ? savedProvider : (list[0] || "");
+        setProvider(p);
       })
       .catch(() => {});
     fetch("/api/sim/jobs")
@@ -46,15 +50,25 @@ export default function LLM() {
 
   useEffect(() => {
     if (!provider) return;
+    const savedModel = localStorage.getItem("llm_model") || "";
     fetch(`/api/llm/models?provider=${provider}`)
       .then((r) => r.json())
       .then((d) => {
         const list = Array.isArray(d.models) ? d.models : [];
         setModels(list);
-        if (list.length > 0) setModel(list[0]);
+        const m = list.includes(savedModel) ? savedModel : (list[0] || "");
+        setModel(m);
       })
       .catch(() => {});
   }, [provider]);
+
+  useEffect(() => {
+    if (provider) localStorage.setItem("llm_provider", provider);
+  }, [provider]);
+
+  useEffect(() => {
+    if (model) localStorage.setItem("llm_model", model);
+  }, [model]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -304,7 +318,7 @@ export default function LLM() {
           {loading && (
             <div className="flex justify-start">
               <div className="bg-slate-100 rounded-lg px-4 py-2 text-sm text-slate-400">
-                Thinking…
+                Thinking...
               </div>
             </div>
           )}
@@ -317,7 +331,7 @@ export default function LLM() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKey}
-            placeholder="Type a message…"
+            placeholder="Type a message..."
             disabled={loading}
             className="flex-1 border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
@@ -353,7 +367,7 @@ function QuickActionCard({
     >
       <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
       <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-        {busy ? "Processing…" : description}
+        {busy ? "Processing..." : description}
       </p>
     </button>
   );
