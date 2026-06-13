@@ -4,13 +4,13 @@
 __pycache__/
 *.pyc
 .venv/
-.venv-sim38/
 node_modules/
 web_sota/
 docs/
 images/
 tests/
-*.md
+README.md
+CHANGELOG.md
 *.ps1
 *.bat
 justfile
