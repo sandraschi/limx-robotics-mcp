@@ -3,7 +3,7 @@ name = "limx-robotics-mcp"
 version = "0.2.0"
 description = "LimX Dynamics robotics via MCP simulation via MCP"
 requires-python = ">=3.11"
-dependencies = ["fastmcp>=3.2", "httpx>=0.28", "fastapi>=0.115", "uvicorn[standard]>=0.34", "trimesh>=4"]
+dependencies = ["fastmcp>=3.4.4,<4", "httpx>=0.28", "fastapi>=0.115", "uvicorn[standard]>=0.34", "trimesh>=4"]
 
 [project.scripts]
 limx-robotics-mcp = "limx_robotics_mcp:main"
@@ -17,3 +17,14 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/limx_robotics_mcp"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP"]
+ignore = ["E501"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.16.0,<0.17"]
