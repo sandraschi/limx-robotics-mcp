@@ -122,7 +122,9 @@ async def test_list_robot_variants_tron1(mocker):
     """tron1 variants discovered from mock directories."""
     import limx_robotics_mcp.server as server_mod
 
-    mocker.patch.object(server_mod, "_tron1_variants", return_value=["PF_TRON1A", "SF_TRON1A", "WF_TRON1A"])
+    mocker.patch.object(
+        server_mod, "_tron1_variants", return_value=["PF_TRON1A", "SF_TRON1A", "WF_TRON1A"]
+    )
 
     result = await server_mod.list_robot_variants(platform="tron1")
     assert result["success"] is True
@@ -151,8 +153,17 @@ async def test_get_robot_description_success(mocker, all_paths_exist, mock_rglob
     """Mock file read, verify content returned."""
     import limx_robotics_mcp.server as server_mod
 
-    mock_rglob("HU_D04_01.urdf", stem="HU_D04_01", suffix=".urdf", size=2048, content="<robot><link>...</link></robot>")
-    mocker.patch("pathlib.Path.rglob", return_value=mock_rglob._make.__self__ if hasattr(mock_rglob, '_make') else [])
+    mock_rglob(
+        "HU_D04_01.urdf",
+        stem="HU_D04_01",
+        suffix=".urdf",
+        size=2048,
+        content="<robot><link>...</link></robot>",
+    )
+    mocker.patch(
+        "pathlib.Path.rglob",
+        return_value=mock_rglob._make.__self__ if hasattr(mock_rglob, "_make") else [],
+    )
 
     # Re-patch rglob more directly
     fake_file = mocker.MagicMock(spec=Path)
@@ -164,7 +175,9 @@ async def test_get_robot_description_success(mocker, all_paths_exist, mock_rglob
     fake_file.read_text.return_value = "<robot><link>...</link></robot>"
     mocker.patch("pathlib.Path.rglob", return_value=[fake_file])
 
-    result = await server_mod.get_robot_description(platform="oli", variant="HU_D04_01", include_content=True)
+    result = await server_mod.get_robot_description(
+        platform="oli", variant="HU_D04_01", include_content=True
+    )
     assert result["success"] is True
     assert result["format"] == "urdf"
     assert len(result["files"]) >= 1

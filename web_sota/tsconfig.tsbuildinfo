@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/components/floatingchat.tsx","./src/pages/dashboard.tsx","./src/pages/help.tsx","./src/pages/llm.tsx","./src/pages/logging.tsx","./src/pages/models.tsx","./src/pages/policies.tsx","./src/pages/settings.tsx","./src/pages/simulations.tsx"],"errors":true,"version":"5.9.3"}

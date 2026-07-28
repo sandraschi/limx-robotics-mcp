@@ -1,0 +1,14 @@
+{
+    "product_name": "LIMX Robotics MCP",
+    "install_dir": "%LOCALAPPDATA%\\LIMX Robotics MCP",
+    "operator_exe": "limx-robotics-mcp-native.exe",
+    "backend_process_names": ["limx-robotics-mcp-native", "limx-robotics-mcp-backend"],
+    "backend_port": 11044,
+    "health_path": "/api/v1/health",
+    "diagnostics_path": "/api/v1/diagnostics",
+    "feature_smoke_path": "/api/v1/system/info",
+    "window_title_re": "LIMX Robotics MCP",
+    "nsis_glob": "native/target/release/bundle/nsis/LIMX Robotics MCP_*_x64-setup.exe",
+    "bridge_ok_text": "REST bridge reachable",
+    "uninstall_registry_filter": "*LIMX Robotics MCP*"
+}

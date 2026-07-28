@@ -26,7 +26,7 @@ async def api_health():
 
 
 # Mount MCP HTTP transport
-app.mount("/mcp", mcp.http_app())
+app.mount("/mcp", mcp.http_app(path="/"))
 
 
 def run_dev():

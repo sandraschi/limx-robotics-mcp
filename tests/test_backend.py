@@ -11,35 +11,55 @@ from fastapi.testclient import TestClient
 @pytest.fixture(autouse=True)
 def mock_routes(mocker):
     """Patch the MCP functions imported by each route module."""
-    import web_sota.backend.routes.sim as sim_mod
     import web_sota.backend.routes.models as models_mod
     import web_sota.backend.routes.policies as policies_mod
+    import web_sota.backend.routes.sim as sim_mod
 
-    mocker.patch.object(sim_mod, "sim_status",
-                        return_value={"success": True, "ready": True, "message": "mock"})
-    mocker.patch.object(sim_mod, "start_sim",
-                        return_value={"success": True, "job_id": "test123", "status": "running", "message": "mock"})
-    mocker.patch.object(sim_mod, "stop_sim",
-                        return_value={"success": True, "message": "mock"})
-    mocker.patch.object(sim_mod, "sim_jobs",
-                        return_value={"success": True, "jobs": [], "message": "0 jobs"})
+    mocker.patch.object(
+        sim_mod, "sim_status", return_value={"success": True, "ready": True, "message": "mock"}
+    )
+    mocker.patch.object(
+        sim_mod,
+        "start_sim",
+        return_value={"success": True, "job_id": "test123", "status": "running", "message": "mock"},
+    )
+    mocker.patch.object(sim_mod, "stop_sim", return_value={"success": True, "message": "mock"})
+    mocker.patch.object(
+        sim_mod, "sim_jobs", return_value={"success": True, "jobs": [], "message": "0 jobs"}
+    )
 
-    mocker.patch.object(models_mod, "list_robot_variants",
-                        return_value={"success": True, "variants": ["PF_TRON1A", "SF_TRON1A"], "message": "mock"})
-    mocker.patch.object(models_mod, "get_robot_description",
-                        return_value={"success": True, "files": [], "message": "mock"})
-    mocker.patch.object(models_mod, "export_model_for_fleet",
-                        return_value={"success": True, "path": "mock.glb", "message": "mock"})
+    mocker.patch.object(
+        models_mod,
+        "list_robot_variants",
+        return_value={"success": True, "variants": ["PF_TRON1A", "SF_TRON1A"], "message": "mock"},
+    )
+    mocker.patch.object(
+        models_mod,
+        "get_robot_description",
+        return_value={"success": True, "files": [], "message": "mock"},
+    )
+    mocker.patch.object(
+        models_mod,
+        "export_model_for_fleet",
+        return_value={"success": True, "path": "mock.glb", "message": "mock"},
+    )
 
-    mocker.patch.object(policies_mod, "list_policies",
-                        return_value={"success": True, "policies": [], "message": "mock"})
-    mocker.patch.object(policies_mod, "run_deployed_policy",
-                        return_value={"success": True, "exit_code": 0, "message": "mock"})
+    mocker.patch.object(
+        policies_mod,
+        "list_policies",
+        return_value={"success": True, "policies": [], "message": "mock"},
+    )
+    mocker.patch.object(
+        policies_mod,
+        "run_deployed_policy",
+        return_value={"success": True, "exit_code": 0, "message": "mock"},
+    )
 
 
 @pytest.fixture
 def client():
     from web_sota.backend.server import app
+
     return TestClient(app)
 
 

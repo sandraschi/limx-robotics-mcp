@@ -41,15 +41,23 @@ HUMANOID_MUJOCO = EXTERNAL / "humanoid-mujoco-sim"
 HUMANOID_DESC = EXTERNAL / "humanoid-description"
 LIMXSDK = EXTERNAL / "limxsdk-lowlevel"
 LOG_DIR = Path(os.getenv("LIMX_LOG_DIR", "D:/Dev/repos/limx-robotics-mcp/logs"))
-SIM_PYTHON = Path(os.getenv("LIMX_SIM_PYTHON", "D:/Dev/repos/limx-robotics-mcp/.venv-sim38/Scripts/python.exe"))
+SIM_PYTHON = Path(
+    os.getenv("LIMX_SIM_PYTHON", "D:/Dev/repos/limx-robotics-mcp/.venv-sim38/Scripts/python.exe")
+)
 
 PLATFORMS = {
     "tron1": {"repo": TRON1_MUJOCO, "script": TRON1_MUJOCO / "simulator.py"},
     "oli": {"repo": HUMANOID_MUJOCO, "script": HUMANOID_MUJOCO / "simulator.py"},
 }
 RL_DEPLOY = {
-    "tron1": {"repo": EXTERNAL / "tron1-rl-deploy-python", "entry": EXTERNAL / "tron1-rl-deploy-python" / "main.py"},
-    "oli":   {"repo": EXTERNAL / "humanoid-rl-deploy-python", "entry": EXTERNAL / "humanoid-rl-deploy-python" / "main.py"},
+    "tron1": {
+        "repo": EXTERNAL / "tron1-rl-deploy-python",
+        "entry": EXTERNAL / "tron1-rl-deploy-python" / "main.py",
+    },
+    "oli": {
+        "repo": EXTERNAL / "humanoid-rl-deploy-python",
+        "entry": EXTERNAL / "humanoid-rl-deploy-python" / "main.py",
+    },
 }
 
 mcp = FastMCP(name="limx-robotics-mcp")
@@ -59,12 +67,15 @@ mcp = FastMCP(name="limx-robotics-mcp")
 # Robot variant discovery
 # ---------------------------------------------------------------------------
 
+
 def _tron1_variants() -> list[str]:
     """Pointfoot variants only — the upstream simulator hardcodes the pointfoot path."""
     base = TRON1_MUJOCO / "robot-description" / "pointfoot"
     if not base.exists():
         return []
-    return sorted(d.name for d in base.iterdir() if d.is_dir() and (d / "xml" / "robot.xml").exists())
+    return sorted(
+        d.name for d in base.iterdir() if d.is_dir() and (d / "xml" / "robot.xml").exists()
+    )
 
 
 def _oli_variants() -> list[str]:
@@ -82,12 +93,19 @@ def _model_path_for(platform: str, robot_type: str) -> Path:
     if platform == "tron1":
         return TRON1_MUJOCO / "robot-description" / "pointfoot" / robot_type / "xml" / "robot.xml"
     main_type = robot_type.rsplit("_", 1)[0]
-    return HUMANOID_MUJOCO / "humanoid-description" / f"{main_type}_description" / "xml" / f"{robot_type}.xml"
+    return (
+        HUMANOID_MUJOCO
+        / "humanoid-description"
+        / f"{main_type}_description"
+        / "xml"
+        / f"{robot_type}.xml"
+    )
 
 
 # ---------------------------------------------------------------------------
 # Simulation job manager
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SimJob:
@@ -127,13 +145,18 @@ JOBS: dict[str, SimJob] = {}
 # Tools
 # ---------------------------------------------------------------------------
 
+
 @mcp.tool()
 async def start_sim(
-    platform: Annotated[str, Field(description="Platform: 'tron1' (biped) or 'oli' (humanoid).")] = "tron1",
+    platform: Annotated[
+        str, Field(description="Platform: 'tron1' (biped) or 'oli' (humanoid).")
+    ] = "tron1",
     robot_type: Annotated[
         str,
-        Field(description="ROBOT_TYPE for the simulator, e.g. 'PF_TRON1A', 'SF_TRON1A', 'WF_TRON1A' "
-                          "(tron1) or 'HU_D03_03', 'HU_D04_01' (oli). Use list_robot_variants to discover."),
+        Field(
+            description="ROBOT_TYPE for the simulator, e.g. 'PF_TRON1A', 'SF_TRON1A', 'WF_TRON1A' "
+            "(tron1) or 'HU_D03_03', 'HU_D04_01' (oli). Use list_robot_variants to discover."
+        ),
     ] = "PF_TRON1A",
 ) -> dict[str, Any]:
     """Start a LimX MuJoCo simulation as a managed background process.
@@ -143,10 +166,16 @@ async def start_sim(
     window is closed. Returns a job_id for stop_sim / sim_jobs.
     """
     if platform not in PLATFORMS:
-        return {"success": False, "message": f"Unknown platform '{platform}'. Use 'tron1' or 'oli'."}
+        return {
+            "success": False,
+            "message": f"Unknown platform '{platform}'. Use 'tron1' or 'oli'.",
+        }
     script = PLATFORMS[platform]["script"]
     if not script.exists():
-        return {"success": False, "message": f"Simulator not found: {script}. Clone with --recurse-submodules."}
+        return {
+            "success": False,
+            "message": f"Simulator not found: {script}. Clone with --recurse-submodules.",
+        }
 
     model = _model_path_for(platform, robot_type)
     if not model.exists():
@@ -161,7 +190,7 @@ async def start_sim(
         return {
             "success": False,
             "message": f"Sim interpreter not found: {SIM_PYTHON}. The LimX Windows SDK requires Python 3.8 "
-                       "(see README Setup) or set LIMX_SIM_PYTHON.",
+            "(see README Setup) or set LIMX_SIM_PYTHON.",
         }
 
     job_id = uuid.uuid4().hex[:8]
@@ -182,7 +211,9 @@ async def start_sim(
         log_fh.close()
         return {"success": False, "message": f"Failed to launch simulator: {e}"}
 
-    JOBS[job_id] = SimJob(job_id=job_id, platform=platform, robot_type=robot_type, proc=proc, log_path=log_path)
+    JOBS[job_id] = SimJob(
+        job_id=job_id, platform=platform, robot_type=robot_type, proc=proc, log_path=log_path
+    )
 
     # Give the process a moment to fail fast (missing deps, bad model) so we
     # can report immediately instead of pretending it's running.
@@ -194,8 +225,11 @@ async def start_sim(
             "message": f"Simulator exited immediately ({job.proc.returncode}). See log_tail.",
             **job.info(log_tail_lines=15),
         }
-    return {"success": True, "message": f"Simulation started (job {job_id}). MuJoCo viewer window should be open.",
-            **job.info()}
+    return {
+        "success": True,
+        "message": f"Simulation started (job {job_id}). MuJoCo viewer window should be open.",
+        **job.info(),
+    }
 
 
 @mcp.tool()
@@ -218,15 +252,27 @@ async def stop_sim(
 
 @mcp.tool()
 async def sim_jobs(
-    job_id: Annotated[str | None, Field(description="Optional: detail view with log tail for one job.")] = None,
-    log_tail_lines: Annotated[int, Field(description="Log lines to include in detail view.", ge=0, le=200)] = 25,
+    job_id: Annotated[
+        str | None, Field(description="Optional: detail view with log tail for one job.")
+    ] = None,
+    log_tail_lines: Annotated[
+        int, Field(description="Log lines to include in detail view.", ge=0, le=200)
+    ] = 25,
 ) -> dict[str, Any]:
     """List simulation jobs (running and exited), or detail one job with its log tail."""
     if job_id is not None:
         job = JOBS.get(job_id)
         if job is None:
-            return {"success": False, "message": f"Unknown job '{job_id}'.", "known_jobs": list(JOBS)}
-        return {"success": True, "message": f"Job {job_id}: {job.status()}.", **job.info(log_tail_lines=log_tail_lines)}
+            return {
+                "success": False,
+                "message": f"Unknown job '{job_id}'.",
+                "known_jobs": list(JOBS),
+            }
+        return {
+            "success": True,
+            "message": f"Job {job_id}: {job.status()}.",
+            **job.info(log_tail_lines=log_tail_lines),
+        }
     return {
         "success": True,
         "message": f"{len(JOBS)} job(s) this session.",
@@ -244,11 +290,21 @@ async def list_robot_variants(
     in robot-description but the upstream simulator script does not load them.
     """
     if platform not in PLATFORMS:
-        return {"success": False, "message": f"Unknown platform '{platform}'. Use 'tron1' or 'oli'."}
+        return {
+            "success": False,
+            "message": f"Unknown platform '{platform}'. Use 'tron1' or 'oli'.",
+        }
     variants = _tron1_variants() if platform == "tron1" else _oli_variants()
     if not variants:
-        return {"success": False, "message": f"No variants found for {platform} — submodules initialized?"}
-    return {"success": True, "message": f"{len(variants)} variants for {platform}.", "variants": variants}
+        return {
+            "success": False,
+            "message": f"No variants found for {platform} — submodules initialized?",
+        }
+    return {
+        "success": True,
+        "message": f"{len(variants)} variants for {platform}.",
+        "variants": variants,
+    }
 
 
 @mcp.tool()
@@ -256,13 +312,19 @@ async def get_robot_description(
     platform: Annotated[str, Field(description="Platform: 'oli' or 'tron1'.")] = "oli",
     variant: Annotated[
         str | None,
-        Field(description="Robot variant, e.g. 'HU_D04_01' (oli) or 'PF_TRON1A' (tron1). "
-                          "Default: newest oli generation / PF_TRON1A."),
+        Field(
+            description="Robot variant, e.g. 'HU_D04_01' (oli) or 'PF_TRON1A' (tron1). "
+            "Default: newest oli generation / PF_TRON1A."
+        ),
     ] = None,
-    format: Annotated[str, Field(description="Format: 'urdf', 'usd', or 'xml' (oli); 'xml' or 'urdf' (tron1).")] = "urdf",
+    format: Annotated[
+        str, Field(description="Format: 'urdf', 'usd', or 'xml' (oli); 'xml' or 'urdf' (tron1).")
+    ] = "urdf",
     include_content: Annotated[
         bool,
-        Field(description="Return file content inline (capped at 200 KB). Default: paths and sizes only."),
+        Field(
+            description="Return file content inline (capped at 200 KB). Default: paths and sizes only."
+        ),
     ] = False,
 ) -> dict[str, Any]:
     """Locate robot description files (URDF/USD/XML) for a LimX platform.
@@ -281,16 +343,27 @@ async def get_robot_description(
         variant = variant or "PF_TRON1A"
         search_dir = TRON1_MUJOCO / "robot-description" / "pointfoot" / variant
     else:
-        return {"success": False, "message": f"Unknown platform '{platform}'. Use 'oli' or 'tron1'."}
+        return {
+            "success": False,
+            "message": f"Unknown platform '{platform}'. Use 'oli' or 'tron1'.",
+        }
 
     if not search_dir.exists():
         valid = _oli_variants() if platform == "oli" else _tron1_variants()
-        return {"success": False, "message": f"Description dir not found: {search_dir}.", "valid_variants": valid}
+        return {
+            "success": False,
+            "message": f"Description dir not found: {search_dir}.",
+            "valid_variants": valid,
+        }
 
     files = sorted(search_dir.rglob(f"*.{format}"))
     if not files:
         available = sorted({p.suffix.lstrip(".") for p in search_dir.rglob("*") if p.is_file()})
-        return {"success": False, "message": f"No .{format} files under {search_dir}.", "available_formats": available}
+        return {
+            "success": False,
+            "message": f"No .{format} files under {search_dir}.",
+            "available_formats": available,
+        }
 
     result: dict[str, Any] = {
         "success": True,
@@ -305,7 +378,9 @@ async def get_robot_description(
         best = next((p for p in files if p.stem == variant), files[0])
         size = best.stat().st_size
         if size > 200_000:
-            result["content_note"] = f"{best.name} is {size} bytes (> 200 KB cap); read from path instead."
+            result["content_note"] = (
+                f"{best.name} is {size} bytes (> 200 KB cap); read from path instead."
+            )
         else:
             result["content"] = best.read_text(encoding="utf-8")
             result["content_path"] = str(best)
@@ -332,23 +407,39 @@ async def sim_status() -> dict[str, Any]:
         for repo in (TRON1_MUJOCO, HUMANOID_MUJOCO)
         for p in (repo / "limxsdk-lowlevel" / "python3" / "win").glob("*.whl")
     ]
-    sim_env = {"sim_python": str(SIM_PYTHON), "exists": SIM_PYTHON.exists(), "deps_ok": False, "detail": ""}
+    sim_env = {
+        "sim_python": str(SIM_PYTHON),
+        "exists": SIM_PYTHON.exists(),
+        "deps_ok": False,
+        "detail": "",
+    }
     if SIM_PYTHON.exists():
         try:
             probe = subprocess.run(
-                [str(SIM_PYTHON), "-c",
-                 "import sys, mujoco, limxsdk.robot.Robot; "
-                 "print(sys.version.split()[0], mujoco.__version__)"],
-                capture_output=True, text=True, timeout=30,
+                [
+                    str(SIM_PYTHON),
+                    "-c",
+                    "import sys, mujoco, limxsdk.robot.Robot; "
+                    "print(sys.version.split()[0], mujoco.__version__)",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
             )
             sim_env["deps_ok"] = probe.returncode == 0
-            sim_env["detail"] = (probe.stdout or probe.stderr).strip().splitlines()[-1] if (probe.stdout or probe.stderr) else ""
+            sim_env["detail"] = (
+                (probe.stdout or probe.stderr).strip().splitlines()[-1]
+                if (probe.stdout or probe.stderr)
+                else ""
+            )
         except (subprocess.TimeoutExpired, OSError) as e:
             sim_env["detail"] = f"probe failed: {e}"
     ready = all(repos.values()) and all(submodules.values()) and bool(sim_env["deps_ok"])
     return {
         "success": True,
-        "message": "Ready to simulate." if ready else "Not ready — see repos/submodules/sim_environment.",
+        "message": "Ready to simulate."
+        if ready
+        else "Not ready — see repos/submodules/sim_environment.",
         "ready": ready,
         "external_dir": str(EXTERNAL),
         "repos": repos,
@@ -380,8 +471,12 @@ def _mesh_dir_for(platform: str, variant: str) -> Path | None:
 @mcp.tool()
 async def export_model_for_fleet(
     platform: Annotated[str, Field(description="Platform: 'tron1' or 'oli'.")] = "oli",
-    variant: Annotated[str, Field(description="Robot variant, e.g. 'HU_D04_01' or 'PF_TRON1A'.")] = "HU_D04_01",
-    format: Annotated[str, Field(description="Export format: 'glb' (single scene), 'mesh-bundle' (zip of STLs).")] = "glb",
+    variant: Annotated[
+        str, Field(description="Robot variant, e.g. 'HU_D04_01' or 'PF_TRON1A'.")
+    ] = "HU_D04_01",
+    format: Annotated[
+        str, Field(description="Export format: 'glb' (single scene), 'mesh-bundle' (zip of STLs).")
+    ] = "glb",
 ) -> dict[str, Any]:
     """Export a LimX robot model to the fleet exchange for godot-mcp / unity3d-mcp.
 
@@ -404,6 +499,7 @@ async def export_model_for_fleet(
 
     if format == "mesh-bundle":
         import shutil
+
         out_name = f"{platform}_{variant}_meshes.zip"
         out_path = LIMX_EXCHANGE / out_name
         shutil.make_archive(str(out_path.with_suffix("")), "zip", root_dir=mesh_dir)
@@ -476,15 +572,25 @@ async def list_policies(
             size = sum(f.stat().st_size for f in child.rglob("*") if f.is_file())
             policies.append({"name": child.name, "type": "dir", "size_bytes": size})
         elif child.suffix == ".py":
-            policies.append({"name": child.stem, "type": "script", "size_bytes": child.stat().st_size})
-    return {"success": True, "message": f"{len(policies)} policy/controller(s).", "policies": policies}
+            policies.append(
+                {"name": child.stem, "type": "script", "size_bytes": child.stat().st_size}
+            )
+    return {
+        "success": True,
+        "message": f"{len(policies)} policy/controller(s).",
+        "policies": policies,
+    }
 
 
 @mcp.tool()
 async def run_deployed_policy(
     platform: Annotated[str, Field(description="Platform: 'tron1' or 'oli'.")] = "tron1",
-    policy_name: Annotated[str, Field(description="Policy directory name from list_policies.")] = "",
-    robot_type: Annotated[str, Field(description="ROBOT_TYPE for the sim (e.g. 'PF_TRON1A').")] = "PF_TRON1A",
+    policy_name: Annotated[
+        str, Field(description="Policy directory name from list_policies.")
+    ] = "",
+    robot_type: Annotated[
+        str, Field(description="ROBOT_TYPE for the sim (e.g. 'PF_TRON1A').")
+    ] = "PF_TRON1A",
 ) -> dict[str, Any]:
     """Run a trained RL policy on the real/simulated robot via the LimX deploy pipeline.
 
@@ -499,15 +605,21 @@ async def run_deployed_policy(
     if not entry.exists():
         return {"success": False, "message": f"Deploy entry not found: {entry}."}
     if not SIM_PYTHON.exists():
-        return {"success": False, "message": f"Sim interpreter not found: {SIM_PYTHON}. Run setup-sim-env.ps1."}
+        return {
+            "success": False,
+            "message": f"Sim interpreter not found: {SIM_PYTHON}. Run setup-sim-env.ps1.",
+        }
     args = [str(entry)]
     if policy_name:
         args.extend(["--controller", policy_name])
     env = {**os.environ, "ROBOT_TYPE": robot_type}
     try:
         proc = subprocess.Popen(
-            [str(SIM_PYTHON), *args], cwd=deploy["repo"], env=env,
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            [str(SIM_PYTHON), *args],
+            cwd=deploy["repo"],
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
         )
     except OSError as e:
         return {"success": False, "message": f"Failed to launch policy: {e}"}
@@ -560,7 +672,9 @@ def _job_dir_for(job_id: str) -> Path:
 
 @mcp.tool()
 async def agentic_sim_workflow(
-    goal: Annotated[str, Field(description="Natural language goal, e.g. 'Start a TRON 1 sim and make it walk'.")],
+    goal: Annotated[
+        str, Field(description="Natural language goal, e.g. 'Start a TRON 1 sim and make it walk'.")
+    ],
     ctx: Context,
 ) -> dict[str, Any]:
     """Execute an autonomous multi-step simulation workflow using the host LLM.
@@ -589,23 +703,40 @@ After completion, summarize what happened and any observations."""
     try:
         result = await ctx.sample(prompt)
         text = getattr(result, "text", None) or str(result)
-        return {"success": True, "message": "Workflow completed.", "plan_and_result": text.strip(), "sampling_used": True}
+        return {
+            "success": True,
+            "message": "Workflow completed.",
+            "plan_and_result": text.strip(),
+            "sampling_used": True,
+        }
     except Exception as e:
         try:
             import httpx
+
             resp = httpx.post(
                 "http://127.0.0.1:11434/api/generate",
                 json={"model": "llama3.2:3b", "prompt": prompt, "stream": False},
                 timeout=120,
             )
-            return {"success": True, "message": "Workflow completed (Ollama).", "plan_and_result": resp.json().get("response", ""), "sampling_used": False, "model": "ollama"}
+            return {
+                "success": True,
+                "message": "Workflow completed (Ollama).",
+                "plan_and_result": resp.json().get("response", ""),
+                "sampling_used": False,
+                "model": "ollama",
+            }
         except Exception as ollama_e:
-            return {"success": False, "message": f"Both sampling and Ollama fallback failed: {e}; {ollama_e}"}
+            return {
+                "success": False,
+                "message": f"Both sampling and Ollama fallback failed: {e}; {ollama_e}",
+            }
 
 
 @mcp.tool()
 async def natural_language_control(
-    prompt: Annotated[str, Field(description="Natural language command, e.g. 'bend the right knee 30 degrees'.")],
+    prompt: Annotated[
+        str, Field(description="Natural language command, e.g. 'bend the right knee 30 degrees'.")
+    ],
     job_id: Annotated[str, Field(description="Active sim job id.")],
     ctx: Context,
 ) -> dict[str, Any]:
@@ -641,6 +772,7 @@ Example: {{"hip_joint": 0.5, "knee_joint": -0.3}}"""
     except Exception:
         try:
             import httpx
+
             resp = httpx.post(
                 "http://127.0.0.1:11434/api/generate",
                 json={"model": "llama3.2:3b", "prompt": nl_prompt, "stream": False},
@@ -652,13 +784,22 @@ Example: {{"hip_joint": 0.5, "knee_joint": -0.3}}"""
 
     ctrl = _extract_json(text)
     if not ctrl:
-        return {"success": False, "message": "Could not parse LLM output as actuator commands.", "raw_llm_output": text}
+        return {
+            "success": False,
+            "message": "Could not parse LLM output as actuator commands.",
+            "raw_llm_output": text,
+        }
 
     if job_dir.exists():
         job_dir.mkdir(parents=True, exist_ok=True)
         (job_dir / "control.json").write_text(json.dumps(ctrl))
 
-    return {"success": True, "message": f"Generated {len(ctrl)} actuator commands.", "controls": ctrl, "source": "sampling" if sampling_used else "ollama"}
+    return {
+        "success": True,
+        "message": f"Generated {len(ctrl)} actuator commands.",
+        "controls": ctrl,
+        "source": "sampling" if sampling_used else "ollama",
+    }
 
 
 @mcp.tool()
@@ -697,16 +838,27 @@ Describe in plain English:
     try:
         result = await ctx.sample(analyze_prompt)
         text = getattr(result, "text", None) or str(result)
-        return {"success": True, "message": "State analyzed.", "analysis": text.strip(), "sampling_used": True}
+        return {
+            "success": True,
+            "message": "State analyzed.",
+            "analysis": text.strip(),
+            "sampling_used": True,
+        }
     except Exception:
         try:
             import httpx
+
             resp = httpx.post(
                 "http://127.0.0.1:11434/api/generate",
                 json={"model": "llama3.2:3b", "prompt": analyze_prompt, "stream": False},
                 timeout=30,
             )
-            return {"success": True, "message": "State analyzed (Ollama).", "analysis": resp.json().get("response", ""), "sampling_used": False}
+            return {
+                "success": True,
+                "message": "State analyzed (Ollama).",
+                "analysis": resp.json().get("response", ""),
+                "sampling_used": False,
+            }
         except Exception as e:
             return {"success": False, "message": f"LLM unavailable: {e}"}
 
@@ -749,23 +901,36 @@ Provide:
     try:
         result = await ctx.sample(log_prompt)
         text = getattr(result, "text", None) or str(result)
-        return {"success": True, "message": "Logs analyzed.", "analysis": text.strip(), "sampling_used": True}
+        return {
+            "success": True,
+            "message": "Logs analyzed.",
+            "analysis": text.strip(),
+            "sampling_used": True,
+        }
     except Exception:
         try:
             import httpx
+
             resp = httpx.post(
                 "http://127.0.0.1:11434/api/generate",
                 json={"model": "llama3.2:3b", "prompt": log_prompt, "stream": False},
                 timeout=30,
             )
-            return {"success": True, "message": "Logs analyzed (Ollama).", "analysis": resp.json().get("response", ""), "sampling_used": False}
+            return {
+                "success": True,
+                "message": "Logs analyzed (Ollama).",
+                "analysis": resp.json().get("response", ""),
+                "sampling_used": False,
+            }
         except Exception as e:
             return {"success": False, "message": f"LLM unavailable: {e}"}
 
 
 @mcp.tool()
 async def discover_model(
-    description: Annotated[str, Field(description="Description, e.g. 'Unitree H1 humanoid MuJoCo model'.")],
+    description: Annotated[
+        str, Field(description="Description, e.g. 'Unitree H1 humanoid MuJoCo model'.")
+    ],
     ctx: Context,
 ) -> dict[str, Any]:
     """Search for and download a MuJoCo MJCF/XML model from GitHub given a natural-language description.
@@ -786,6 +951,7 @@ Example: ["https://raw.githubusercontent.com/unitreerobotics/unitree_mujoco/main
     except Exception:
         try:
             import httpx
+
             resp = httpx.post(
                 "http://127.0.0.1:11434/api/generate",
                 json={"model": "llama3.2:3b", "prompt": prompt, "stream": False},
@@ -802,6 +968,7 @@ Example: ["https://raw.githubusercontent.com/unitreerobotics/unitree_mujoco/main
     models_dir.mkdir(parents=True, exist_ok=True)
     loaded = []
     import httpx as httpx_mod
+
     for url in urls[:3]:
         try:
             resp = httpx_mod.get(url, follow_redirects=True, timeout=30)
@@ -815,7 +982,9 @@ Example: ["https://raw.githubusercontent.com/unitreerobotics/unitree_mujoco/main
 
     return {
         "success": len(loaded) > 0,
-        "message": f"Loaded {len(loaded)}/{len(urls)} models." if loaded else "No models could be downloaded.",
+        "message": f"Loaded {len(loaded)}/{len(urls)} models."
+        if loaded
+        else "No models could be downloaded.",
         "models_loaded": loaded,
         "urls_tried": urls,
     }

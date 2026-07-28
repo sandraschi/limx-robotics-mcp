@@ -2,7 +2,9 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from limx_robotics_mcp.server import mcp, sim_status as _sim_status
+
+from limx_robotics_mcp.server import mcp
+from limx_robotics_mcp.server import sim_status as _sim_status
 
 app = FastAPI(title="limx-robotics-mcp")
 
@@ -26,9 +28,10 @@ async def api_health():
 
 
 # Mount MCP HTTP transport
-app.mount("/mcp", mcp.http_app())
+app.mount("/mcp", mcp.http_app(path="/"))
 
 
 def run_dev():
     import uvicorn
+
     uvicorn.run("limx_robotics_mcp.app:app", host="127.0.0.1", port=11044, log_level="info")
