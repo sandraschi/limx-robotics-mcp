@@ -5,7 +5,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "src"))
 
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
-from limx_robotics_mcp.server import list_policies, run_deployed_policy, RL_DEPLOY
+
+from limx_robotics_mcp.server import RL_DEPLOY, list_policies, run_deployed_policy
 
 router = APIRouter(tags=["Policies"], prefix="/api/policies")
 

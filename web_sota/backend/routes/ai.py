@@ -7,12 +7,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "src"))
 
 from fastapi import APIRouter
 from pydantic import BaseModel
+
 from limx_robotics_mcp.server import (
     agentic_sim_workflow,
-    natural_language_control,
-    analyze_sim_state,
     analyze_sim_logs,
+    analyze_sim_state,
     discover_model,
+    natural_language_control,
 )
 
 router = APIRouter(tags=["AI"], prefix="/api/ai")

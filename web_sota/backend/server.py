@@ -10,14 +10,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from web_sota.backend.routes.sim import router as sim_router
+from web_sota.backend.log_buffer import activity_log
+from web_sota.backend.routes.ai import router as ai_router
+from web_sota.backend.routes.llm import router as llm_router
+from web_sota.backend.routes.logging import router as logging_router
 from web_sota.backend.routes.models import router as models_router
 from web_sota.backend.routes.policies import router as policies_router
-from web_sota.backend.routes.logging import router as logging_router
-from web_sota.backend.routes.llm import router as llm_router
 from web_sota.backend.routes.settings import router as settings_router
-from web_sota.backend.routes.ai import router as ai_router
-from web_sota.backend.log_buffer import activity_log
+from web_sota.backend.routes.sim import router as sim_router
 
 
 @asynccontextmanager

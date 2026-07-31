@@ -3,7 +3,6 @@ set windows-shell := ["powershell.exe", "-NoProfile", "-Command"]
 import 'scripts/just/fleet.just'
 
 # === Fleet-standard ===
-    uv run python -c "from pathlib import Path; p = Path('D:/Dev/repos/external/tron1-rl-deploy-python/controllers'); print('Policies:', [d.name for d in p.iterdir()]) if p.exists() else print('no deploy repo')"
 bootstrap:
     powershell.exe -NoProfile -File ./setup-sim-env.ps1
 

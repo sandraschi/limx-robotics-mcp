@@ -4,6 +4,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "src"))
 
 from fastapi import APIRouter, Query
+
 from limx_robotics_mcp.server import LOG_DIR
 
 router = APIRouter(tags=["Logging"], prefix="/api/logs")

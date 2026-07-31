@@ -69,10 +69,10 @@ class ActivityLog:
     def _tail_file(self, lines: int = 200) -> list[str]:
         if not self._file_path or not self._file_path.exists():
             return []
-        with open(self._file_path, "r", encoding="utf-8", errors="replace") as f:
+        with open(self._file_path, encoding="utf-8", errors="replace") as f:
             f.seek(0)
             all_lines = f.readlines()
-        return [l.rstrip("\n\r") for l in all_lines[-lines:]]
+        return [line.rstrip("\n\r") for line in all_lines[-lines:]]
 
     # ---- query ---------------------------------------------------------------
 

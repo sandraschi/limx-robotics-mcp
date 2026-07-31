@@ -5,7 +5,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "src"))
 
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
-from limx_robotics_mcp.server import sim_status, start_sim, stop_sim, sim_jobs
+
+from limx_robotics_mcp.server import sim_jobs, sim_status, start_sim, stop_sim
 
 router = APIRouter(tags=["Simulation"], prefix="/api/sim")
 

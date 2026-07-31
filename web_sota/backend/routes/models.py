@@ -5,11 +5,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "src"))
 
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
+
 from limx_robotics_mcp.server import (
-    list_robot_variants,
-    get_robot_description,
-    export_model_for_fleet,
     FLEET_EXCHANGE,
+    export_model_for_fleet,
+    get_robot_description,
+    list_robot_variants,
 )
 
 router = APIRouter(tags=["Models"], prefix="/api/models")
