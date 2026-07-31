@@ -11,10 +11,10 @@ serve:
     uv run python -m limx_robotics_mcp
 
 lint:
-    ruff check src/ web_sota/backend/
+    uv run ruff check src/ web_sota/backend/
 
 fix:
-    ruff check --fix src/ web_sota/backend/
+    uv run ruff check --fix src/ web_sota/backend/
 
 test:
     uv run pytest tests/ -q
@@ -41,3 +41,5 @@ variants:
 
 policies:
     uv run python -c "from pathlib import Path; p = Path('D:/Dev/repos/external/tron1-rl-deploy-python/controllers'); print('Policies:', [d.name for d in p.iterdir()]) if p.exists() else print('no deploy repo')"
+
+# Bootstrap: install dev deps + pre-commit hook
