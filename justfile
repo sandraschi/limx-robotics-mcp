@@ -19,7 +19,7 @@ test:
     uv run pytest tests/ -q
 
 e2e:
-    cd web_sota && npx playwright test
+    cd web_sota; npx playwright test
 
 web:
     powershell.exe -NoProfile -File ./web_sota/start.ps1
@@ -29,8 +29,8 @@ clean:
 
 # === Repo-specific ===
 submodules:
-    cd D:\Dev\repos\external\tron1-mujoco-sim && git submodule update --init --recursive
-    cd D:\Dev\repos\external\humanoid-mujoco-sim && git submodule update --init --recursive
+    cd D:\Dev\repos\external\tron1-mujoco-sim; git submodule update --init --recursive
+    cd D:\Dev\repos\external\humanoid-mujoco-sim; git submodule update --init --recursive
 
 sim-env:
     powershell.exe -NoProfile -c "& 'D:\Dev\repos\limx-robotics-mcp\.venv-sim38\python.exe' -c 'import sys,mujoco,limxsdk; print(f\"Py{sys.version.split()[0]} mujoco{mujoco.__version__} SDK OK\")' 2>&1"
