@@ -416,7 +416,8 @@ async def sim_status() -> dict[str, Any]:
     }
     if SIM_PYTHON.exists():
         try:
-            probe = subprocess.run(
+            probe = await asyncio.to_thread(
+                subprocess.run,
                 [
                     str(SIM_PYTHON),
                     "-c",
