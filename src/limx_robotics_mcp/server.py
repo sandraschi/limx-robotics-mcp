@@ -1,9 +1,9 @@
-"""limx-robotics-mcp — FastMCP 3.2 wrapper for LimX Dynamics open-source robotics stack.
+"""limx-robotics-mcp - FastMCP 3.2 wrapper for LimX Dynamics open-source robotics stack.
 
 Wraps the LimX MuJoCo simulators (TRON 1 biped, Oli humanoid) and robot
 description repos as MCP tools. Simulations run as managed background
 processes (start/stop/status) because the upstream simulator.py opens a
-GUI MuJoCo viewer and runs until closed — a blocking subprocess.run() can
+GUI MuJoCo viewer and runs until closed - a blocking subprocess.run() can
 never work here.
 
 Upstream contract (verified against repos as of 2026-06-11):
@@ -15,13 +15,14 @@ Upstream contract (verified against repos as of 2026-06-11):
   humanoid-description/{MAIN}_description/xml/{ROBOT_TYPE}.xml where MAIN is
   ROBOT_TYPE.rsplit('_', 1)[0] (e.g. HU_D03_03 -> HU_D03).
 - The Windows limxsdk wheels (3.4.0 and 3.4.2) vendor a _robot.pyd linked
-  against python38.dll despite the py3-none-any tag — sims MUST run under
+  against python38.dll despite the py3-none-any tag - sims MUST run under
   Python 3.8. The MCP server itself runs on 3.11/3.12 (FastMCP requirement),
   so simulations launch under a dedicated sim interpreter (LIMX_SIM_PYTHON,
   default .venv-sim38: Python 3.8.20 + mujoco 3.1.6 + numpy 1.24.4 +
   limxsdk 3.4.2 installed --no-deps).
 """
 
+import asyncio
 import json
 import os
 import re
@@ -69,7 +70,7 @@ mcp = FastMCP(name="limx-robotics-mcp")
 
 
 def _tron1_variants() -> list[str]:
-    """Pointfoot variants only — the upstream simulator hardcodes the pointfoot path."""
+    """Pointfoot variants only - the upstream simulator hardcodes the pointfoot path."""
     base = TRON1_MUJOCO / "robot-description" / "pointfoot"
     if not base.exists():
         return []
@@ -198,7 +199,7 @@ async def start_sim(
     log_path = LOG_DIR / f"sim_{platform}_{robot_type}_{job_id}.log"
     env = {**os.environ, "ROBOT_TYPE": robot_type}
 
-    log_fh = open(log_path, "w", encoding="utf-8")  # noqa: SIM115 — handle owned by child process
+    log_fh = open(log_path, "w", encoding="utf-8")  # noqa: SIM115 - handle owned by child process
     try:
         proc = subprocess.Popen(
             [str(SIM_PYTHON), str(script)],
@@ -217,7 +218,7 @@ async def start_sim(
 
     # Give the process a moment to fail fast (missing deps, bad model) so we
     # can report immediately instead of pretending it's running.
-    time.sleep(2.0)
+    await asyncio.sleep(2.0)
     job = JOBS[job_id]
     if job.proc.poll() is not None:
         return {
@@ -286,7 +287,7 @@ async def list_robot_variants(
 ) -> dict[str, Any]:
     """List valid ROBOT_TYPE values for a platform, discovered from the description repos.
 
-    Note: tron1 lists pointfoot variants only — wheellegged (WL_*) models exist
+    Note: tron1 lists pointfoot variants only - wheellegged (WL_*) models exist
     in robot-description but the upstream simulator script does not load them.
     """
     if platform not in PLATFORMS:
@@ -298,7 +299,7 @@ async def list_robot_variants(
     if not variants:
         return {
             "success": False,
-            "message": f"No variants found for {platform} — submodules initialized?",
+            "message": f"No variants found for {platform} - submodules initialized?",
         }
     return {
         "success": True,
@@ -333,7 +334,7 @@ async def get_robot_description(
     tron1 -> D:/Dev/repos/external/tron1-mujoco-sim/robot-description/pointfoot/{variant}/
 
     Returns file paths by default; set include_content=true for the file body
-    (single best match, capped) — full USD/mesh payloads stay on disk.
+    (single best match, capped) - full USD/mesh payloads stay on disk.
     """
     if platform == "oli":
         variant = variant or "HU_D04_01"
@@ -439,7 +440,7 @@ async def sim_status() -> dict[str, Any]:
         "success": True,
         "message": "Ready to simulate."
         if ready
-        else "Not ready — see repos/submodules/sim_environment.",
+        else "Not ready - see repos/submodules/sim_environment.",
         "ready": ready,
         "external_dir": str(EXTERNAL),
         "repos": repos,
@@ -480,11 +481,11 @@ async def export_model_for_fleet(
 ) -> dict[str, Any]:
     """Export a LimX robot model to the fleet exchange for godot-mcp / unity3d-mcp.
 
-    **glb** — load all STL meshes, apply URDF transforms, write a single GLB file
+    **glb** - load all STL meshes, apply URDF transforms, write a single GLB file
     at `_exchange/models/limx/{platform}_{variant}.glb`. Import into Godot via
     ``godot_import_glb(path=...)``.
 
-    **mesh-bundle** — copy all raw STL/USD/OBJ meshes as a zip
+    **mesh-bundle** - copy all raw STL/USD/OBJ meshes as a zip
     at `_exchange/models/limx/{platform}_{variant}_meshes.zip`.
     """
     mesh_dir = _mesh_dir_for(platform, variant)
@@ -684,14 +685,14 @@ async def agentic_sim_workflow(
     """
     tools_desc = """
 Available tools (invoke with JSON):
-- start_sim(platform, robot_type) — launch MuJoCo sim, returns job_id
-- stop_sim(job_id) — terminate sim
-- sim_jobs(job_id, log_tail_lines) — query job status
-- list_robot_variants(platform) — discover valid robot types
-- get_robot_description(platform, variant, format) — get URDF/USD/XML
-- export_model_for_fleet(platform, variant, format) — export GLB
-- list_policies(platform) — list RL policies
-- run_deployed_policy(platform, policy_name, robot_type) — deploy policy
+- start_sim(platform, robot_type) - launch MuJoCo sim, returns job_id
+- stop_sim(job_id) - terminate sim
+- sim_jobs(job_id, log_tail_lines) - query job status
+- list_robot_variants(platform) - discover valid robot types
+- get_robot_description(platform, variant, format) - get URDF/USD/XML
+- export_model_for_fleet(platform, variant, format) - export GLB
+- list_policies(platform) - list RL policies
+- run_deployed_policy(platform, policy_name, robot_type) - deploy policy
 """
     prompt = f"""You are a robotics simulation engineer. Your goal: {goal}
 
@@ -870,7 +871,7 @@ async def analyze_sim_logs(
 ) -> dict[str, Any]:
     """Read the sim log file and ask the LLM for root-cause analysis and suggestions.
 
-    Useful after a sim crash or unexpected behaviour — the LLM reads the last
+    Useful after a sim crash or unexpected behaviour - the LLM reads the last
     100 log lines and produces diagnostics.
     """
     job = JOBS.get(job_id)
