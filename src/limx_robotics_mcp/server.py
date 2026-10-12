@@ -629,7 +629,7 @@ async def run_deployed_policy(
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     log_path = LOG_DIR / f"policy_{platform}_{policy_name}_{job_id}.log"
     with open(log_path, "wb") as f:
-        stdout, _ = proc.communicate(timeout=30)
+        stdout, _ = await asyncio.to_thread(proc.communicate, timeout=30)
         f.write(stdout)
     return {
         "success": proc.returncode == 0,
@@ -715,7 +715,8 @@ After completion, summarize what happened and any observations."""
         try:
             import httpx
 
-            resp = httpx.post(
+            resp = await asyncio.to_thread(
+                httpx.post,
                 "http://127.0.0.1:11434/api/generate",
                 json={"model": "llama3.2:3b", "prompt": prompt, "stream": False},
                 timeout=120,
@@ -775,7 +776,8 @@ Example: {{"hip_joint": 0.5, "knee_joint": -0.3}}"""
         try:
             import httpx
 
-            resp = httpx.post(
+            resp = await asyncio.to_thread(
+                httpx.post,
                 "http://127.0.0.1:11434/api/generate",
                 json={"model": "llama3.2:3b", "prompt": nl_prompt, "stream": False},
                 timeout=30,
@@ -850,7 +852,8 @@ Describe in plain English:
         try:
             import httpx
 
-            resp = httpx.post(
+            resp = await asyncio.to_thread(
+                httpx.post,
                 "http://127.0.0.1:11434/api/generate",
                 json={"model": "llama3.2:3b", "prompt": analyze_prompt, "stream": False},
                 timeout=30,
@@ -913,7 +916,8 @@ Provide:
         try:
             import httpx
 
-            resp = httpx.post(
+            resp = await asyncio.to_thread(
+                httpx.post,
                 "http://127.0.0.1:11434/api/generate",
                 json={"model": "llama3.2:3b", "prompt": log_prompt, "stream": False},
                 timeout=30,
@@ -954,7 +958,8 @@ Example: ["https://raw.githubusercontent.com/unitreerobotics/unitree_mujoco/main
         try:
             import httpx
 
-            resp = httpx.post(
+            resp = await asyncio.to_thread(
+                httpx.post,
                 "http://127.0.0.1:11434/api/generate",
                 json={"model": "llama3.2:3b", "prompt": prompt, "stream": False},
                 timeout=30,
@@ -973,7 +978,7 @@ Example: ["https://raw.githubusercontent.com/unitreerobotics/unitree_mujoco/main
 
     for url in urls[:3]:
         try:
-            resp = httpx_mod.get(url, follow_redirects=True, timeout=30)
+            resp = await asyncio.to_thread(httpx_mod.get, url, follow_redirects=True, timeout=30)
             if resp.status_code == 200 and b"<mujoco" in resp.content[:500]:
                 name = url.split("/")[-1].replace(".xml", "")
                 dest = models_dir / f"{name}.xml"
