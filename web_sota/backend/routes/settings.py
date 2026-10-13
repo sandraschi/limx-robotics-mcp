@@ -29,11 +29,14 @@ def _read_settings() -> dict:
             key, _, value = line.partition("=")
             env_vars[key.strip()] = value.strip().strip("\"'")
         return {"source": ".env", "data": env_vars}
-    return {"source": "defaults", "data": {
-        "LIMX_EXTERNAL_DIR": "D:/Dev/repos/external",
-        "LIMX_SIM_PYTHON": str(REPO_ROOT / ".venv-sim38" / "Scripts" / "python.exe"),
-        "FLEET_EXCHANGE_ROOT": "D:/Dev/repos/_exchange",
-    }}
+    return {
+        "source": "defaults",
+        "data": {
+            "LIMX_EXTERNAL_DIR": str(REPO_ROOT.parent / "external"),
+            "LIMX_SIM_PYTHON": str(REPO_ROOT / ".venv-sim38" / "Scripts" / "python.exe"),
+            "FLEET_EXCHANGE_ROOT": str(REPO_ROOT.parent / "_exchange"),
+        },
+    }
 
 
 def _write_env(data: dict) -> None:
@@ -63,4 +66,8 @@ async def post_settings(body: SettingsBody):
         _write_yaml(body.data)
     else:
         _write_env(body.data)
-    return {"success": True, "message": f"Settings saved to .{body.format}.", "settings": _read_settings()}
+    return {
+        "success": True,
+        "message": f"Settings saved to .{body.format}.",
+        "settings": _read_settings(),
+    }

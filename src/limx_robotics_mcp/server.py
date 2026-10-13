@@ -36,14 +36,17 @@ from typing import Annotated, Any
 from fastmcp import Context, FastMCP
 from pydantic import Field
 
-EXTERNAL = Path(os.getenv("LIMX_EXTERNAL_DIR", "D:/Dev/repos/external"))
+# Repo checkout root (src/limx_robotics_mcp/server.py -> parents[2]); upstream
+# sims are cloned into an "external" dir next to it.
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+EXTERNAL = Path(os.getenv("LIMX_EXTERNAL_DIR", str(_REPO_ROOT.parent / "external")))
 TRON1_MUJOCO = EXTERNAL / "tron1-mujoco-sim"
 HUMANOID_MUJOCO = EXTERNAL / "humanoid-mujoco-sim"
 HUMANOID_DESC = EXTERNAL / "humanoid-description"
 LIMXSDK = EXTERNAL / "limxsdk-lowlevel"
-LOG_DIR = Path(os.getenv("LIMX_LOG_DIR", "D:/Dev/repos/limx-robotics-mcp/logs"))
+LOG_DIR = Path(os.getenv("LIMX_LOG_DIR", str(_REPO_ROOT / "logs")))
 SIM_PYTHON = Path(
-    os.getenv("LIMX_SIM_PYTHON", "D:/Dev/repos/limx-robotics-mcp/.venv-sim38/Scripts/python.exe")
+    os.getenv("LIMX_SIM_PYTHON", str(_REPO_ROOT / ".venv-sim38" / "Scripts" / "python.exe"))
 )
 
 PLATFORMS = {
@@ -456,7 +459,7 @@ async def sim_status() -> dict[str, Any]:
 # Fleet visualization bridge
 # ---------------------------------------------------------------------------
 
-FLEET_EXCHANGE = Path(os.getenv("FLEET_EXCHANGE_ROOT", "D:/Dev/repos/_exchange"))
+FLEET_EXCHANGE = Path(os.getenv("FLEET_EXCHANGE_ROOT", str(_REPO_ROOT.parent / "_exchange")))
 LIMX_EXCHANGE = FLEET_EXCHANGE / "models" / "limx"
 
 
@@ -664,7 +667,7 @@ def _extract_json_array(text: str) -> list:
 
 
 def _job_dir_for(job_id: str) -> Path:
-    return Path("D:/Dev/repos/limx-robotics-mcp/jobs") / job_id
+    return _REPO_ROOT / "jobs" / job_id
 
 
 # ---------------------------------------------------------------------------
@@ -971,7 +974,7 @@ Example: ["https://raw.githubusercontent.com/unitreerobotics/unitree_mujoco/main
     if not urls:
         return {"success": False, "message": "Could not generate model URLs from description."}
 
-    models_dir = Path("D:/Dev/repos/limx-robotics-mcp/models")
+    models_dir = _REPO_ROOT / "models"
     models_dir.mkdir(parents=True, exist_ok=True)
     loaded = []
     import httpx as httpx_mod
