@@ -2,8 +2,8 @@
 # Edit ports/backend target here - start.ps1 is fleet-standard.
 @{
     Name         = 'limx-robotics-mcp'
-    BackendPort  = 0
-    FrontendPort = 0
+    BackendPort  = 11044
+    FrontendPort = 11045
     HealthPath   = '/health'
     WebRoot      = 'web_sota'
     Backend = @{
