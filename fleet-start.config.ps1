@@ -4,12 +4,17 @@
     Name         = 'limx-robotics-mcp'
     BackendPort  = 11044
     FrontendPort = 11045
-    HealthPath   = '/health'
+    HealthPath   = '/api/health'
     WebRoot      = 'web_sota'
     Backend = @{
-        Kind = 'none'
+        Kind          = 'uvicorn'
+        UvicornTarget = 'web_sota.backend.server:app'
+        SyncExtras    = @('dev')
+        SyncOnStart   = $true
+        Env           = @{ WEB_PORT = '11044' }
     }
     Frontend = @{
-        Kind = 'none'
+        Kind           = 'vite-npm'
+        PackageManager = 'npm'
     }
 }
